@@ -45,7 +45,7 @@ class _ContactEditScreenState extends State<ContactEditScreen> {
           child: _avatarCtrl.text.isNotEmpty ? null : Text(_nameCtrl.text.isNotEmpty ? _nameCtrl.text[0] : '?', style: const TextStyle(color: Colors.white, fontSize: 28)),
           backgroundImage: _avatarCtrl.text.isNotEmpty ? NetworkImage(_avatarCtrl.text) : null)),
         const SizedBox(height: 16),
-        TextField(controller: _nameCtrl, decoration: const InputDecoration(labelText: widget.isGroup ? '群名称' : '昵称', border: OutlineInputBorder()), onChanged: (_) => setState(() {})),
+        TextField(controller: _nameCtrl, decoration: InputDecoration(labelText: widget.isGroup ? '群名称' : '昵称', border: OutlineInputBorder()), onChanged: (_) => setState(() {})),
         const SizedBox(height: 12),
         TextField(controller: _avatarCtrl, decoration: const InputDecoration(labelText: '头像URL(可选)', border: OutlineInputBorder(), hintText: 'https://...'), onChanged: (_) => setState(() {})),
         const SizedBox(height: 12),

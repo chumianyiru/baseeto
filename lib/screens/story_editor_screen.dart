@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/story.dart';
+import 'story_player_screen.dart';
 
 class StoryEditorScreen extends StatefulWidget {
   final Story story;
@@ -137,7 +138,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> with SingleTicker
         FloatingActionButton.small(onPressed: _addNode, heroTag: 'addnode', child: const Icon(Icons.add)),
         const SizedBox(height: 8),
         FloatingActionButton.small(onPressed: _story.nodes.isNotEmpty ? () => setState(() => _story.startNodeId = _story.nodes.first.id) : null, heroTag: 'setstart', child: const Icon(Icons.start), tooltip: '设第一个为起始'),
-      ]),
+      ])),
     ]);
   }
 
