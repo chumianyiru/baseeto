@@ -1,332 +1,126 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/story.dart';
 
 class StoryPlayerScreen extends StatefulWidget {
   final Story story;
-
   const StoryPlayerScreen({super.key, required this.story});
-
   @override
   State<StoryPlayerScreen> createState() => _StoryPlayerScreenState();
 }
 
-class _StoryPlayerScreenState extends State<StoryPlayerScreen> {
-  String? _currentNodeId;
-  StoryDialogue? _currentDialogue;
+class _StoryPlayerScreenState extends State<StoryPlayerScreen> with SingleTickerProviderStateMixin {
+  StoryNode? _currentNode;
   String _displayedText = '';
+  int _charIndex = 0;
+  Timer? _typeTimer;
   bool _isTyping = false;
-  bool _textComplete = false;
-  int _typingIndex = 0;
+  bool _showChoices = false;
+  String? _endingTitle;
+  String? _bgPath;
 
   @override
   void initState() {
     super.initState();
-    _currentNodeId = widget.story.startNodeId;
-    _loadCurrentDialogue();
+    _goToNode(widget.story.startNodeId);
   }
 
-  void _loadCurrentDialogue() {
-    if (_currentNodeId == null) {
-      setState(() => _currentDialogue = null);
-      return;
-    }
-    final dialogue = widget.story.dialogues.firstWhere(
-      (d) => d.id == _currentNodeId,
-      orElse: () => widget.story.dialogues.isNotEmpty
-          ? widget.story.dialogues.first
-          : StoryDialogue(id: '', characterId: '', characterName: '', text: ''),
-    );
+  @override
+  void dispose() { _typeTimer?.cancel(); super.dispose(); }
+
+  void _goToNode(String? nodeId) {
+    if (nodeId == null || nodeId.isEmpty) { _showEnding('剧情结束'); return; }
+    final node = widget.story.nodes.firstWhere((n) => n.id == nodeId, orElse: () => StoryNode(id: '', characterId: '', text: ''));
+    if (node.id.isEmpty) { _showEnding('剧情结束'); return; }
     setState(() {
-      _currentDialogue = dialogue;
+      _currentNode = node;
       _displayedText = '';
-      _typingIndex = 0;
-      _textComplete = false;
-      _isTyping = true;
+      _charIndex = 0;
+      _showChoices = false;
+      _endingTitle = null;
+      if (node.backgroundPath != null) _bgPath = node.backgroundPath;
     });
-    _startTypingAnimation(dialogue.text);
+    _startTyping(node.text);
   }
 
-  void _startTypingAnimation(String fullText) {
-    Future.doWhile(() async {
-      if (!mounted || _typingIndex >= fullText.length) {
+  void _startTyping(String text) {
+    _typeTimer?.cancel();
+    _isTyping = true;
+    _typeTimer = Timer.periodic(const Duration(milliseconds: 30), (t) {
+      if (_charIndex >= text.length) {
+        t.cancel(); _isTyping = false;
         if (mounted) {
           setState(() {
-            _isTyping = false;
-            _textComplete = true;
+            if (_currentNode!.isEnding) _showEnding(_currentNode!.endingTitle ?? '剧情结束');
+            else if (_currentNode!.choices.isNotEmpty) _showChoices = true;
           });
         }
-        return false;
+        return;
       }
-      await Future.delayed(const Duration(milliseconds: 30));
-      if (!mounted) return false;
-      setState(() {
-        _typingIndex++;
-        _displayedText = fullText.substring(0, _typingIndex);
-      });
-      return true;
+      setState(() => _displayedText = text.substring(0, _charIndex + 1));
+      _charIndex++;
     });
   }
 
   void _onTap() {
-    if (_currentDialogue == null) {
-      Navigator.pop(context);
-      return;
-    }
-
-    if (_isTyping) {
-      setState(() {
-        _displayedText = _currentDialogue!.text;
-        _typingIndex = _currentDialogue!.text.length;
-        _isTyping = false;
-        _textComplete = true;
-      });
-      return;
-    }
-
-    if (_currentDialogue!.isChoice) {
-      return;
-    }
-
-    if (_currentDialogue!.nextNodeId != null) {
-      _currentNodeId = _currentDialogue!.nextNodeId;
-      _loadCurrentDialogue();
-    } else {
-      _showEnding();
+    if (_isTyping) { _typeTimer?.cancel(); setState(() { _displayedText = _currentNode!.text; _isTyping = false; if (_currentNode!.choices.isNotEmpty) _showChoices = true; }); return; }
+    if (_showChoices) return;
+    if (_endingTitle != null) { Navigator.pop(context); return; }
+    if (_currentNode != null && _currentNode!.choices.isEmpty) {
+      _goToNode(_currentNode!.nextNodeId);
     }
   }
 
-  void _onChoiceSelected(StoryChoice choice) {
-    _currentNodeId = choice.nextNodeId;
-    _loadCurrentDialogue();
+  void _showEnding(String title) {
+    setState(() => _endingTitle = title);
   }
 
-  void _showEnding() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('剧情结束'),
-        content: const Text('感谢游玩！'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
-            },
-            child: const Text('返回'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _currentNodeId = widget.story.startNodeId;
-              _loadCurrentDialogue();
-            },
-            child: const Text('重新开始'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  StoryCharacter? _getCurrentCharacter() {
-    if (_currentDialogue == null) return null;
-    try {
-      return widget.story.characters.firstWhere(
-        (c) => c.id == _currentDialogue!.characterId,
-      );
-    } catch (e) {
-      return null;
-    }
+  StoryCharacter? _getChar(String id) {
+    try { return widget.story.characters.firstWhere((c) => c.id == id); } catch (_) { return null; }
   }
 
   @override
   Widget build(BuildContext context) {
-    final character = _getCurrentCharacter();
-
+    final char = _currentNode != null ? _getChar(_currentNode!.characterId) : null;
     return Scaffold(
       backgroundColor: Colors.black,
-      body: GestureDetector(
-        onTap: _onTap,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Background
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    character != null
-                        ? Color(character.colorValue).withOpacity(0.3)
-                        : Colors.blueGrey.shade900,
-                    Colors.black,
-                  ],
-                ),
-              ),
-            ),
-            // Character placeholder
-            if (character != null)
-              Positioned(
-                bottom: 180,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    width: 200,
-                    height: 280,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(character.colorValue).withOpacity(0.6),
-                          Color(character.colorValue).withOpacity(0.2),
-                          Colors.transparent,
-                        ],
-                      ),
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(100),
-                        topRight: Radius.circular(100),
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        character.name,
-                        style: TextStyle(
-                          fontSize: 32,
-                          color: Colors.white.withOpacity(0.8),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            // Top bar
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: AppBar(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                leading: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                title: Text(
-                  widget.story.title,
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-            // Choices
-            if (_currentDialogue?.isChoice == true && _textComplete)
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: _currentDialogue!.choices.map((choice) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 32),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            backgroundColor: Colors.white.withOpacity(0.9),
-                            foregroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          onPressed: () => _onChoiceSelected(choice),
-                          child: Text(
-                            choice.text,
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            // Dialog box
-            if (_currentDialogue != null && !(_currentDialogue!.isChoice && _textComplete))
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: 24,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (character != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Color(character.colorValue),
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(8),
-                            topRight: Radius.circular(8),
-                          ),
-                        ),
-                        child: Text(
-                          character.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.85),
-                        borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(8),
-                          bottomLeft: Radius.circular(8),
-                          bottomRight: Radius.circular(8),
-                        ),
-                        border: Border.all(
-                          color: character != null
-                              ? Color(character.colorValue).withOpacity(0.5)
-                              : Colors.white24,
-                          width: 1,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _displayedText,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              height: 1.6,
-                            ),
-                          ),
-                          if (_textComplete && !_currentDialogue!.isChoice)
-                            Align(
-                              alignment: Alignment.bottomRight,
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Icon(
-                                  Icons.arrow_drop_down,
-                                  color: Colors.white.withOpacity(0.7),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
+      body: GestureDetector(onTap: _onTap, child: Stack(fit: StackFit.expand, children: [
+        // Background
+        if (_bgPath != null) Positioned.fill(child: Image.network(_bgPath!, fit: BoxFit.cover, errorBuilder: (_,__,___) => Container(color: const Color(0xFF1a1a2e))))
+        else Container(decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1a1a3e), Color(0xFF2d1b4e)]))),
+        // Character portrait area
+        if (char != null && char.avatarPath.isNotEmpty) Positioned(bottom: 180, left: 0, right: 0, child: Center(child: Opacity(opacity: 0.9, child: Image.network(char.avatarPath, height: 300, fit: BoxFit.contain, errorBuilder: (_,__,___) => const SizedBox())))),
+        // Ending overlay
+        if (_endingTitle != null) Container(color: Colors.black.withOpacity(0.8), child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('— END —', style: TextStyle(color: Colors.white70, fontSize: 16, letterSpacing: 4)),
+          const SizedBox(height: 16),
+          Text(_endingTitle!, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 24),
+          const Text('点击屏幕返回', style: TextStyle(color: Colors.white54, fontSize: 14)),
+        ]))),
+        // Choices
+        if (_showChoices) Positioned.fill(child: Container(color: Colors.black54, child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ..._currentNode!.choices.map((c) => Container(margin: const EdgeInsets.symmetric(vertical: 6), width: 280, child: Material(color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(8), child: InkWell(
+            borderRadius: BorderRadius.circular(8), onTap: () => _goToNode(c.targetNodeId),
+            child: Padding(padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20), child: Center(child: Text(c.text, style: const TextStyle(fontSize: 16, color: Colors.black87)))),
+          )))),
+        ])))),
+        // Dialog box (Blue Archive style)
+        if (_currentNode != null && _endingTitle == null) Positioned(left: 16, right: 16, bottom: 24, child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          if (char != null) Container(margin: const EdgeInsets.only(left: 12, bottom: -1), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(color: Color(char.colorValue), borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12))),
+            child: Text(char.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14))),
+          Container(width: double.infinity, padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.95), borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16), topRight: Radius.circular(16))),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_displayedText, style: const TextStyle(color: Colors.black87, fontSize: 16, height: 1.5)),
+              if (_isTyping) const SizedBox.shrink()
+              else if (!_showChoices) Align(alignment: Alignment.bottomRight, child: Icon(Icons.keyboard_arrow_down, color: Colors.grey[600], size: 20)),
+            ])),
+        ])),
+        // Back button
+        Positioned(top: 40, left: 8, child: IconButton(icon: const Icon(Icons.close, color: Colors.white70), onPressed: () => Navigator.pop(context))),
+      ])),
     );
   }
 }

@@ -1,23 +1,23 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-class AIService {
-  static Future<String?> getReply({
+class AiService {
+  static const String _baseUrl = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+
+  static Future<String> chat({
+    required String apiKey,
+    required String model,
     required String systemPrompt,
     required List<Map<String, String>> history,
-    required String apiKey,
-    String model = 'glm-4-flash',
-    String baseUrl = 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
   }) async {
     try {
       final messages = <Map<String, String>>[
-        if (systemPrompt.isNotEmpty)
-          {'role': 'system', 'content': systemPrompt},
+        {'role': 'system', 'content': systemPrompt},
         ...history,
       ];
 
       final response = await http.post(
-        Uri.parse(baseUrl),
+        Uri.parse(_baseUrl),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $apiKey',
@@ -26,17 +26,17 @@ class AIService {
           'model': model,
           'messages': messages,
           'temperature': 0.8,
-          'max_tokens': 1000,
+          'max_tokens': 500,
         }),
-      );
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return data['choices'][0]['message']['content'] as String?;
+        return data['choices'][0]['message']['content']?.trim() ?? '...';
       }
-      return null;
+      return '(AI回复失败: ${response.statusCode})';
     } catch (e) {
-      return null;
+      return '(网络错误，请检查网络连接)';
     }
   }
 }

@@ -2,188 +2,56 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/contact.dart';
-import 'add_contact_screen.dart';
+import 'contact_edit_screen.dart';
 import 'chat_screen.dart';
 
 class ContactsScreen extends StatelessWidget {
   const ContactsScreen({super.key});
-
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppState>(
-      builder: (context, appState, child) {
-        final contacts = appState.contacts;
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('联系人'),
-          ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AddContactScreen(),
-                ),
+    final app = context.watch<AppState>();
+    return Scaffold(
+      appBar: AppBar(title: const Text('联系人'), centerTitle: false),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddDialog(context),
+        icon: const Icon(Icons.add), label: const Text('新建'),
+      ),
+      body: app.contacts.isEmpty
+        ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(Icons.contacts_outlined, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text('还没有联系人', style: TextStyle(color: Colors.grey[500], fontSize: 16)),
+            const SizedBox(height: 8),
+            Text('点击右下角添加', style: TextStyle(color: Colors.grey[400])),
+          ]))
+        : ListView.separated(
+            itemCount: app.contacts.length,
+            separatorBuilder: (_, __) => const Divider(height: 1, indent: 76),
+            itemBuilder: (_, i) {
+              final c = app.contacts[i];
+              return ListTile(
+                leading: CircleAvatar(radius: 20, backgroundColor: Color(c.colorValue),
+                  child: c.avatarPath.isEmpty ? Text(c.name.isNotEmpty ? c.name[0] : '?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)) : null,
+                  backgroundImage: c.avatarPath.isNotEmpty ? NetworkImage(c.avatarPath) : null),
+                title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(c.isGroup ? '群聊 · ${c.memberIds.length}人' : (c.aiEnabled ? 'AI已开启' : 'AI已关闭'), style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  if (!c.isGroup) IconButton(icon: Icon(c.aiEnabled ? Icons.smart_toy : Icons.smart_toy_outlined, color: c.aiEnabled ? Theme.of(context).colorScheme.primary : Colors.grey),
+                    onPressed: () { c.aiEnabled = !c.aiEnabled; app.updateContact(c); }),
+                  IconButton(icon: const Icon(Icons.edit_outlined), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ContactEditScreen(contact: c)))),
+                ]),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(contact: c))),
               );
             },
-            icon: const Icon(Icons.add),
-            label: const Text('添加'),
           ),
-          body: contacts.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.people_outline,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        '还没有联系人',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '点击右下角添加联系人或群聊',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: contacts.length,
-                  itemBuilder: (context, index) {
-                    final contact = contacts[index];
-                    return _ContactItem(contact: contact);
-                  },
-                ),
-        );
-      },
     );
   }
-}
 
-class _ContactItem extends StatelessWidget {
-  final Contact contact;
-
-  const _ContactItem({required this.contact});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: CircleAvatar(
-        radius: 24,
-        backgroundColor: Color(contact.colorValue),
-        backgroundImage: contact.avatarPath.isNotEmpty
-            ? (contact.avatarPath.startsWith('http')
-                ? NetworkImage(contact.avatarPath)
-                : null)
-            : null,
-        child: contact.avatarPath.isEmpty || !contact.avatarPath.startsWith('http')
-            ? Text(
-                contact.name.isNotEmpty ? contact.name[0] : '?',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              )
-            : null,
-      ),
-      title: Text(
-        contact.name,
-        style: const TextStyle(fontWeight: FontWeight.w500),
-      ),
-      subtitle: Row(
-        children: [
-          if (contact.isGroup)
-            Container(
-              margin: const EdgeInsets.only(right: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(
-                color: Colors.purple.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text('群聊', style: TextStyle(fontSize: 10, color: Colors.purple)),
-            ),
-          if (contact.enableAI)
-            Container(
-              margin: const EdgeInsets.only(right: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text('AI', style: TextStyle(fontSize: 10, color: Colors.green)),
-            ),
-          Text(
-            contact.systemPrompt.isNotEmpty ? '已设置角色' : '',
-            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-          ),
-        ],
-      ),
-      trailing: PopupMenuButton(
-        itemBuilder: (context) => [
-          const PopupMenuItem(value: 'chat', child: Text('发消息')),
-          const PopupMenuItem(value: 'edit', child: Text('编辑')),
-          const PopupMenuItem(value: 'delete', child: Text('删除')),
-        ],
-        onSelected: (value) {
-          if (value == 'chat') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ChatScreen(contact: contact),
-              ),
-            );
-          } else if (value == 'edit') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AddContactScreen(contact: contact),
-              ),
-            );
-          } else if (value == 'delete') {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('确认删除'),
-                content: Text('确定要删除 ${contact.name} 吗？相关聊天记录也会被删除。'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('取消'),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      context.read<AppState>().deleteContact(contact.id);
-                      Navigator.pop(context);
-                    },
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
-                    child: const Text('删除'),
-                  ),
-                ],
-              ),
-            );
-          }
-        },
-      ),
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChatScreen(contact: contact),
-          ),
-        );
-      },
-    );
+  void _showAddDialog(BuildContext context) {
+    showModalBottomSheet(context: context, builder: (_) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Padding(padding: EdgeInsets.all(16), child: Text('新建', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+      ListTile(leading: const Icon(Icons.person_add), title: const Text('添加联系人'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactEditScreen())); }),
+      ListTile(leading: const Icon(Icons.group_add), title: const Text('创建群聊'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactEditScreen(isGroup: true))); }),
+    ])));
   }
 }

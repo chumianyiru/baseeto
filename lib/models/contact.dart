@@ -3,45 +3,33 @@ class Contact {
   String name;
   String avatarPath;
   String systemPrompt;
-  bool enableAI;
+  bool aiEnabled;
   bool isGroup;
   List<String> memberIds;
   int colorValue;
-  String? soundPath;
 
   Contact({
     required this.id,
     required this.name,
     this.avatarPath = '',
-    this.systemPrompt = '',
-    this.enableAI = false,
+    this.systemPrompt = '你是一个友好的聊天伙伴。',
+    this.aiEnabled = true,
     this.isGroup = false,
     this.memberIds = const [],
-    this.colorValue = 0xFF2196F3,
-    this.soundPath,
+    this.colorValue = 0xFF3B82F6,
   });
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'avatarPath': avatarPath,
-    'systemPrompt': systemPrompt,
-    'enableAI': enableAI,
-    'isGroup': isGroup,
-    'memberIds': memberIds,
-    'colorValue': colorValue,
-    'soundPath': soundPath,
+    'id': id, 'name': name, 'avatarPath': avatarPath,
+    'systemPrompt': systemPrompt, 'aiEnabled': aiEnabled,
+    'isGroup': isGroup, 'memberIds': memberIds, 'colorValue': colorValue,
   };
 
-  factory Contact.fromJson(Map<String, dynamic> json) => Contact(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    avatarPath: json['avatarPath'] as String? ?? '',
-    systemPrompt: json['systemPrompt'] as String? ?? '',
-    enableAI: json['enableAI'] as bool? ?? false,
-    isGroup: json['isGroup'] as bool? ?? false,
-    memberIds: (json['memberIds'] as List<dynamic>?)?.cast<String>() ?? [],
-    colorValue: json['colorValue'] as int? ?? 0xFF2196F3,
-    soundPath: json['soundPath'] as String?,
+  factory Contact.fromJson(Map<String, dynamic> j) => Contact(
+    id: j['id'] ?? '', name: j['name'] ?? '', avatarPath: j['avatarPath'] ?? '',
+    systemPrompt: j['systemPrompt'] ?? '你是一个友好的聊天伙伴。',
+    aiEnabled: j['aiEnabled'] ?? true, isGroup: j['isGroup'] ?? false,
+    memberIds: List<String>.from(j['memberIds'] ?? []),
+    colorValue: j['colorValue'] ?? 0xFF3B82F6,
   );
 }

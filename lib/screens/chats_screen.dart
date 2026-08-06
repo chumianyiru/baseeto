@@ -8,171 +8,54 @@ import 'chat_screen.dart';
 
 class ChatsScreen extends StatelessWidget {
   const ChatsScreen({super.key});
-
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppState>(
-      builder: (context, appState, child) {
-        final contacts = appState.contacts;
-        final chats = contacts.map((contact) {
-          final messages = appState.getMessagesForChat(contact.id);
-          final lastMessage = messages.isNotEmpty ? messages.last : null;
-          return MapEntry(contact, lastMessage);
-        }).toList()
-          ..sort((a, b) {
-            if (a.value == null && b.value == null) return 0;
-            if (a.value == null) return 1;
-            if (b.value == null) return -1;
-            return b.value!.timestamp.compareTo(a.value!.timestamp);
-          });
-
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('BAseeto'),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.search),
-                onPressed: () {},
-              ),
-            ],
+    final app = context.watch<AppState>();
+    final contactsWithMsgs = app.contacts.where((c) => (app.messages[c.id]?.isNotEmpty ?? false)).toList()
+      ..sort((a, b) {
+        final ma = app.messages[a.id]?.last.timestamp ?? DateTime(2000);
+        final mb = app.messages[b.id]?.last.timestamp ?? DateTime(2000);
+        return mb.compareTo(ma);
+      });
+    return Scaffold(
+      appBar: AppBar(title: const Text('聊天'), centerTitle: false),
+      body: contactsWithMsgs.isEmpty
+        ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text('还没有聊天记录', style: TextStyle(color: Colors.grey[500], fontSize: 16)),
+            const SizedBox(height: 8),
+            Text('去联系人页面开始聊天吧', style: TextStyle(color: Colors.grey[400])),
+          ]))
+        : ListView.separated(
+            itemCount: contactsWithMsgs.length,
+            separatorBuilder: (_, __) => const Divider(height: 1, indent: 76),
+            itemBuilder: (_, i) {
+              final c = contactsWithMsgs[i];
+              final msgs = app.messages[c.id] ?? [];
+              final last = msgs.isEmpty ? null : msgs.last;
+              return ListTile(
+                leading: _avatar(c, 40),
+                title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(_lastMsgText(last), maxLines: 1, overflow: TextOverflow.ellipsis),
+                trailing: last != null ? Text(DateFormat('HH:mm').format(last.timestamp), style: TextStyle(color: Colors.grey[500], fontSize: 12)) : null,
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(contact: c))),
+              );
+            },
           ),
-          body: chats.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.chat_bubble_outline,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        '还没有聊天',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '去联系人页面添加好友开始聊天吧',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: chats.length,
-                  itemBuilder: (context, index) {
-                    final contact = chats[index].key;
-                    final lastMessage = chats[index].value;
-                    return _ChatListItem(
-                      contact: contact,
-                      lastMessage: lastMessage,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ChatScreen(contact: contact),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-        );
-      },
     );
   }
-}
 
-class _ChatListItem extends StatelessWidget {
-  final Contact contact;
-  final ChatMessage? lastMessage;
-  final VoidCallback onTap;
-
-  const _ChatListItem({
-    required this.contact,
-    required this.lastMessage,
-    required this.onTap,
-  });
-
-  String _getPreviewText() {
-    if (lastMessage == null) return '';
-    switch (lastMessage!.type) {
-      case MessageType.text:
-        return lastMessage!.content;
-      case MessageType.image:
-        return '[图片]';
-      case MessageType.file:
-        return '[文件]';
-      case MessageType.transfer:
-        return '[转账] ¥${lastMessage!.amount?.toStringAsFixed(2)}';
-      case MessageType.redPacket:
-        return '[红包]';
-      case MessageType.emoji:
-        return '[表情]';
-      case MessageType.system:
-        return lastMessage!.content;
-    }
+  String _lastMsgText(ChatMessage? m) {
+    if (m == null) return '';
+    if (m.isMe) return '我: ${m.content}';
+    return '${m.senderName}: ${m.content}';
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      onTap: onTap,
-      leading: CircleAvatar(
-        radius: 28,
-        backgroundColor: Color(contact.colorValue),
-        backgroundImage: contact.avatarPath.isNotEmpty
-            ? NetworkImage(contact.avatarPath)
-            : null,
-        child: contact.avatarPath.isEmpty
-            ? Text(
-                contact.name.isNotEmpty ? contact.name[0] : '?',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              )
-            : null,
-      ),
-      title: Row(
-        children: [
-          Expanded(
-            child: Text(
-              contact.name,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
-          ),
-          if (lastMessage != null)
-            Text(
-              DateFormat('HH:mm').format(lastMessage!.timestamp),
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[500],
-              ),
-            ),
-        ],
-      ),
-      subtitle: Text(
-        _getPreviewText(),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: 14,
-          color: Colors.grey[600],
-        ),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+  Widget _avatar(Contact c, double size) {
+    return CircleAvatar(radius: size / 2, backgroundColor: Color(c.colorValue),
+      child: c.avatarPath.isEmpty ? Text(c.name.isNotEmpty ? c.name[0] : '?', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)) : null,
+      backgroundImage: c.avatarPath.isNotEmpty ? NetworkImage(c.avatarPath) : null,
     );
   }
 }

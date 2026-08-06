@@ -1,69 +1,77 @@
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../models/contact.dart';
 import '../models/chat_message.dart';
 import '../models/story.dart';
 import '../models/app_settings.dart';
 
 class StorageService {
-  static const String _contactsKey = 'contacts';
-  static const String _messagesKey = 'messages';
-  static const String _storiesKey = 'stories';
-  static const String _settingsKey = 'settings';
+  static late Box _contactsBox;
+  static late Box _messagesBox;
+  static late Box _storiesBox;
+  static late Box _settingsBox;
 
-  late SharedPreferences _prefs;
-
-  Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
+  static Future<void> init() async {
+    await Hive.initFlutter();
+    _contactsBox = await Hive.openBox('contacts');
+    _messagesBox = await Hive.openBox('messages');
+    _storiesBox = await Hive.openBox('stories');
+    _settingsBox = await Hive.openBox('settings');
   }
 
   // Contacts
-  Future<List<Contact>> getContacts() async {
-    final String? data = _prefs.getString(_contactsKey);
+  static List<Contact> getContacts() {
+    return _contactsBox.values.map((v) => Contact.fromJson(jsonDecode(v))).toList();
+  }
+
+  static Future<void> saveContact(Contact c) async {
+    await _contactsBox.put(c.id, jsonEncode(c.toJson()));
+  }
+
+  static Future<void> deleteContact(String id) async {
+    await _contactsBox.delete(id);
+  }
+
+  // Messages - stored as list per chatId
+  static List<ChatMessage> getMessages(String chatId) {
+    final data = _messagesBox.get(chatId);
     if (data == null) return [];
-    final List<dynamic> list = jsonDecode(data);
-    return list.map((e) => Contact.fromJson(e as Map<String, dynamic>)).toList();
+    final list = jsonDecode(data) as List;
+    return list.map((m) => ChatMessage.fromJson(m)).toList();
   }
 
-  Future<void> saveContacts(List<Contact> contacts) async {
-    final String data = jsonEncode(contacts.map((e) => e.toJson()).toList());
-    await _prefs.setString(_contactsKey, data);
+  static Future<void> saveMessages(String chatId, List<ChatMessage> msgs) async {
+    await _messagesBox.put(chatId, jsonEncode(msgs.map((m) => m.toJson()).toList()));
   }
 
-  // Messages
-  Future<List<ChatMessage>> getMessages() async {
-    final String? data = _prefs.getString(_messagesKey);
-    if (data == null) return [];
-    final List<dynamic> list = jsonDecode(data);
-    return list.map((e) => ChatMessage.fromJson(e as Map<String, dynamic>)).toList();
-  }
-
-  Future<void> saveMessages(List<ChatMessage> messages) async {
-    final String data = jsonEncode(messages.map((e) => e.toJson()).toList());
-    await _prefs.setString(_messagesKey, data);
+  static Future<void> addMessage(ChatMessage msg) async {
+    final msgs = getMessages(msg.chatId);
+    msgs.add(msg);
+    await saveMessages(msg.chatId, msgs);
   }
 
   // Stories
-  Future<List<Story>> getStories() async {
-    final String? data = _prefs.getString(_storiesKey);
-    if (data == null) return [];
-    final List<dynamic> list = jsonDecode(data);
-    return list.map((e) => Story.fromJson(e as Map<String, dynamic>)).toList();
+  static List<Story> getStories() {
+    return _storiesBox.values.map((v) => Story.fromJson(jsonDecode(v))).toList();
   }
 
-  Future<void> saveStories(List<Story> stories) async {
-    final String data = jsonEncode(stories.map((e) => e.toJson()).toList());
-    await _prefs.setString(_storiesKey, data);
+  static Future<void> saveStory(Story s) async {
+    await _storiesBox.put(s.id, jsonEncode(s.toJson()));
+  }
+
+  static Future<void> deleteStory(String id) async {
+    await _storiesBox.delete(id);
   }
 
   // Settings
-  Future<AppSettings> getSettings() async {
-    final String? data = _prefs.getString(_settingsKey);
+  static AppSettings getSettings() {
+    final data = _settingsBox.get('app');
     if (data == null) return AppSettings();
-    return AppSettings.fromJson(jsonDecode(data) as Map<String, dynamic>);
+    return AppSettings.fromJson(jsonDecode(data));
   }
 
-  Future<void> saveSettings(AppSettings settings) async {
-    await _prefs.setString(_settingsKey, jsonEncode(settings.toJson()));
+  static Future<void> saveSettings(AppSettings s) async {
+    await _settingsBox.put('app', jsonEncode(s.toJson()));
   }
 }

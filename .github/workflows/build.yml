@@ -28,16 +28,19 @@ jobs:
 
       - name: Generate keystore
         run: |
-          keytool -genkey -v -keystore android/app/baseeto.jks -keyalg RSA -keysize 2048 -validity 10000 -alias baseeto -storepass baseeto123 -keypass baseeto123 -dname "CN=BAseeto, OU=Development, O=BAseeto, L=City, ST=State, C=CN"
+          keytool -genkey -v -keystore android/app/baseeto.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 -alias baseeto \
+            -storepass baseeto123 -keypass baseeto123 \
+            -dname "CN=BAseeto, OU=Development, O=BAseeto, L=City, ST=State, C=CN"
 
-      - name: Build APK
-        run: flutter build apk --debug
+      - name: Build APK (release, arm64-v8a)
+        run: flutter build apk --release --target-platform android-arm64 --split-per-abi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: baseeto-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: baseeto-release-arm64-v8a
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -45,6 +48,12 @@ jobs:
         with:
           tag_name: v1.0.0
           name: BAseeto v1.0.0
-          files: build/app/outputs/flutter-apk/app-debug.apk
+          body: |
+            ## BAseeto v1.0.0
+            - 本地聊天模拟器，支持AI陪聊(GLM-4-Flash)
+            - 仿蔚蓝档案风格剧情编辑器
+            - 虚拟钱包(转账/红包)
+            - 联系人和群聊管理
+          files: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
