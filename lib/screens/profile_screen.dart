@@ -34,7 +34,7 @@ class ProfileScreen extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.psychology, color: Colors.purple),
                 title: const Text('AI设置'),
-                subtitle: Text('模型: ${settings.modelName}'),
+                subtitle: Text('模型: ${settings.apiModel}'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _showAISettingsDialog(context, appState),
               ),
@@ -42,9 +42,9 @@ class ProfileScreen extends StatelessWidget {
                 leading: const Icon(Icons.notifications, color: Colors.red),
                 title: const Text('通知设置'),
                 trailing: Switch(
-                  value: settings.notificationsEnabled,
+                  value: settings.notificationEnabled,
                   onChanged: (v) {
-                    settings.notificationsEnabled = v;
+                    settings.notificationEnabled = v;
                     appState.updateSettings(settings);
                   },
                 ),
@@ -53,9 +53,9 @@ class ProfileScreen extends StatelessWidget {
                 leading: const Icon(Icons.volume_up, color: Colors.green),
                 title: const Text('消息音量'),
                 subtitle: Slider(
-                  value: settings.messageVolume,
+                  value: settings.messageSpeed,
                   onChanged: (v) {
-                    settings.messageVolume = v;
+                    settings.messageSpeed = v;
                     appState.updateSettings(settings);
                   },
                 ),
@@ -186,7 +186,7 @@ class ProfileScreen extends StatelessWidget {
 
   void _showAISettingsDialog(BuildContext context, AppState appState) {
     final keyController = TextEditingController(text: appState.settings.apiKey);
-    final modelController = TextEditingController(text: appState.settings.modelName);
+    final modelController = TextEditingController(text: appState.settings.apiModel);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -213,7 +213,7 @@ class ProfileScreen extends StatelessWidget {
           TextButton(
             onPressed: () {
               appState.settings.apiKey = keyController.text.trim();
-              appState.settings.modelName = modelController.text.trim();
+              appState.settings.apiModel = modelController.text.trim();
               appState.updateSettings(appState.settings);
               Navigator.pop(context);
             },

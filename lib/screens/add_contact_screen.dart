@@ -36,7 +36,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
       _nameController.text = widget.contact!.name;
       _promptController.text = widget.contact!.systemPrompt;
       _avatarPath = widget.contact!.avatarPath;
-      _enableAI = widget.contact!.enableAI;
+      _enableAI = widget.contact!.aiEnabled;
       _isGroup = widget.contact!.isGroup;
       _selectedMembers = List.from(widget.contact!.memberIds);
       _selectedColor = widget.contact!.colorValue;
@@ -63,7 +63,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
         ..name = _nameController.text.trim()
         ..systemPrompt = _promptController.text.trim()
         ..avatarPath = _avatarPath
-        ..enableAI = _enableAI
+        ..aiEnabled = _enableAI
         ..isGroup = _isGroup
         ..memberIds = _selectedMembers
         ..colorValue = _selectedColor;
@@ -73,7 +73,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
         name: _nameController.text.trim(),
         systemPrompt: _promptController.text.trim(),
         avatarPath: _avatarPath,
-        enableAI: _enableAI,
+        aiEnabled: _enableAI,
         isGroup: _isGroup,
         memberIds: _selectedMembers,
         colorValue: _selectedColor,

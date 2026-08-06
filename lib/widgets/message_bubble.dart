@@ -42,14 +42,7 @@ class MessageBubble extends StatelessWidget {
           if (!message.isMe) ...[
             CircleAvatar(
               radius: 18,
-              backgroundImage: message.avatarPath != null && message.avatarPath!.isNotEmpty
-                  ? (message.avatarPath!.startsWith('http')
-                      ? NetworkImage(message.avatarPath!)
-                      : FileImage(File(message.avatarPath!)) as ImageProvider)
-                  : null,
-              child: (message.avatarPath == null || message.avatarPath!.isEmpty)
-                  ? Text(message.senderName[0])
-                  : null,
+              child: Text(message.senderName.isNotEmpty ? message.senderName[0] : '?'),
             ),
             const SizedBox(width: 8),
           ],
@@ -86,7 +79,7 @@ class MessageBubble extends StatelessWidget {
             const SizedBox(width: 8),
             CircleAvatar(
               radius: 18,
-              child: Text(message.senderName[0]),
+              child: Text(message.senderName.isNotEmpty ? message.senderName[0] : '?'),
             ),
           ],
         ],
@@ -130,7 +123,7 @@ class MessageBubble extends StatelessWidget {
   Widget _buildContent() {
     switch (message.type) {
       case MessageType.text:
-      case MessageType.emoji:
+      case MessageType.sticker:
         return Text(
           message.content,
           style: TextStyle(
@@ -139,17 +132,18 @@ class MessageBubble extends StatelessWidget {
           ),
         );
       case MessageType.image:
+        final imagePath = message.extraData ?? '';
         return ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: message.filePath != null && message.filePath!.isNotEmpty
-              ? (message.filePath!.startsWith('http')
+          child: imagePath.isNotEmpty
+              ? (imagePath.startsWith('http')
                   ? Image.network(
-                      message.filePath!,
+                      imagePath,
                       width: 200,
                       fit: BoxFit.cover,
                     )
                   : Image.file(
-                      File(message.filePath!),
+                      File(imagePath),
                       width: 200,
                       fit: BoxFit.cover,
                     ))
@@ -164,18 +158,19 @@ class MessageBubble extends StatelessWidget {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.insert_drive_file, color: Colors.white),
+            Icon(Icons.insert_drive_file, color: message.isMe ? Colors.white : Colors.black87),
             const SizedBox(width: 8),
             Flexible(
               child: Text(
                 message.content,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: message.isMe ? Colors.white : Colors.black87),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         );
       case MessageType.transfer:
+        final amount = double.tryParse(message.extraData ?? '0') ?? 0;
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -190,7 +185,7 @@ class MessageBubble extends StatelessWidget {
                   style: TextStyle(color: Colors.white, fontSize: 14),
                 ),
                 Text(
-                  '¥${message.amount?.toStringAsFixed(2) ?? '0.00'}',
+                  '¥${amount.toStringAsFixed(2)}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -202,11 +197,12 @@ class MessageBubble extends StatelessWidget {
           ],
         );
       case MessageType.redPacket:
+        final amount = double.tryParse(message.extraData ?? '0') ?? 0;
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              message.isOpened ? Icons.card_giftcard : Icons.card_giftcard,
+              Icons.card_giftcard,
               color: Colors.white,
               size: 32,
             ),
@@ -225,7 +221,7 @@ class MessageBubble extends StatelessWidget {
                 ),
                 if (!message.isOpened)
                   Text(
-                    '¥${message.amount?.toStringAsFixed(2) ?? '0.00'}',
+                    '¥${amount.toStringAsFixed(2)}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
