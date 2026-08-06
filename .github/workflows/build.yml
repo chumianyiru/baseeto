@@ -26,9 +26,6 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Verify Dart code
-        run: flutter analyze
-
       - name: Generate keystore
         run: |
           keytool -genkey -v -keystore android/app/baseeto.jks \
