@@ -1,0 +1,50 @@
+name: Build BAseeto
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate keystore
+        run: |
+          keytool -genkey -v -keystore android/app/baseeto.jks -keyalg RSA -keysize 2048 -validity 10000 -alias baseeto -storepass baseeto123 -keypass baseeto123 -dname "CN=BAseeto, OU=Development, O=BAseeto, L=City, ST=State, C=CN"
+
+      - name: Build APK
+        run: flutter build apk --release --target-platform android-arm64-v8a
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseeto-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v1.0.0
+          name: BAseeto v1.0.0
+          files: build/app/outputs/flutter-apk/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
