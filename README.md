@@ -55,5 +55,8 @@
 ## 构建
 ```bash
 flutter pub get
-flutter build apk --release --target-platform android-arm64-v8a
+flutter build apk --release --target-platform android-arm64
 ```
+
+## 下载
+GitHub Actions 自动构建 arm64-v8a Release APK，见 Releases 页面。
