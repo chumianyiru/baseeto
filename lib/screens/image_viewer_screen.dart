@@ -1,38 +1,36 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:gal/gal.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class ImageViewerScreen extends StatelessWidget {
   final String imagePath;
-
   const ImageViewerScreen({super.key, required this.imagePath});
 
   Future<void> _saveImage(BuildContext context) async {
-    final status = await Permission.storage.request();
-    if (!status.isGranted) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('需要存储权限')),
-        );
-      }
-      return;
-    }
-
     try {
-      final result = await ImageGallerySaver.saveFile(imagePath);
+      if (imagePath.startsWith('http')) {
+        final bytes = await HttpClient()
+            .getUrl(Uri.parse(imagePath))
+            .then((request) => request.close())
+            .then((response) => response.fold<List<int>>([], (a, b) => a..addAll(b)));
+        final tempDir = await Directory.systemTemp.createTemp();
+        final tempFile = File('${tempDir.path}/image.jpg');
+        await tempFile.writeAsBytes(bytes);
+        await Gal.putImage(tempFile.path);
+      } else {
+        await Gal.putImage(imagePath);
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result != null ? '图片已保存到相册' : '保存失败'),
-          ),
+          const SnackBar(content: Text('图片已保存到相册')),
         );
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('保存失败')),
+          const SnackBar(content: Text('保存失败，请检查权限')),
         );
       }
     }

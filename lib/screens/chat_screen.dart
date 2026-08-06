@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_view/photo_view.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:gal/gal.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import '../providers/app_state.dart';
@@ -139,7 +139,15 @@ class _ChatScreenState extends State<ChatScreen> {
         Center(child: path.startsWith('http') ? PhotoView(imageProvider: NetworkImage(path)) : PhotoView(imageProvider: FileImage(File(path)))),
         Positioned(bottom: 40, left: 0, right: 0, child: Center(child: IconButton.filled(
           icon: const Icon(Icons.download), onPressed: () async {
-            await ImageGallerySaver.saveFile(path);
+            if (path.startsWith('http')) {
+              final bytes = await HttpClient().getUrl(Uri.parse(path)).then((request) => request.close()).then((response) => response.fold<List<int>>([], (a, b) => a..addAll(b)));
+              final tempDir = await Directory.systemTemp.createTemp();
+              final tempFile = File('${tempDir.path}/image.jpg');
+              await tempFile.writeAsBytes(bytes);
+              await Gal.putImage(tempFile.path);
+            } else {
+              await Gal.putImage(path);
+            }
             if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已保存到相册')));
           },
         ))),
