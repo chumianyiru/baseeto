@@ -33,10 +33,11 @@ class AppState extends ChangeNotifier {
   void _checkInit() { if (!_initialized) return; }
 
   // Contacts
-  Future<Contact> addContact({required String name, String avatarPath = '', String systemPrompt = '', bool isGroup = false, List<String> memberIds = const [], int colorValue = 0xFF3B82F6}) async {
+  Future<Contact> addContact({required String name, String avatarPath = '', String systemPrompt = '', bool aiEnabled = true, bool isGroup = false, List<String> memberIds = const [], int colorValue = 0xFF3B82F6}) async {
     final c = Contact(
       id: _uuid.v4(), name: name, avatarPath: avatarPath,
       systemPrompt: systemPrompt.isEmpty ? '你是$name，用$name的语气和用户聊天。' : systemPrompt,
+      aiEnabled: aiEnabled,
       isGroup: isGroup, memberIds: memberIds, colorValue: colorValue,
     );
     contacts.add(c);
