@@ -31,13 +31,13 @@ jobs:
           keytool -genkey -v -keystore android/app/baseeto.jks -keyalg RSA -keysize 2048 -validity 10000 -alias baseeto -storepass baseeto123 -keypass baseeto123 -dname "CN=BAseeto, OU=Development, O=BAseeto, L=City, ST=State, C=CN"
 
       - name: Build APK
-        run: flutter build apk --release --no-shrink
+        run: flutter build apk --debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: baseeto-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: baseeto-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -45,6 +45,6 @@ jobs:
         with:
           tag_name: v1.0.0
           name: BAseeto v1.0.0
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: build/app/outputs/flutter-apk/app-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
