@@ -7,9 +7,7 @@ class SoundService {
   static Future<void> playMessageSound({bool isMe = false}) async {
     try {
       await _player.setVolume(_volume);
-      // Use system sound effect - we'll use a simple beep via audio cache
-      // In a real app, you'd have actual sound files in assets
-      await _player.play(AssetSource('sounds/message.mp3'));
+      await _player.play(AssetSource('sounds/message.wav'));
     } catch (e) {
       // Silently fail if sound not available
     }
@@ -18,7 +16,7 @@ class SoundService {
   static Future<void> playSendSound() async {
     try {
       await _player.setVolume(_volume);
-      await _player.play(AssetSource('sounds/send.mp3'));
+      await _player.play(AssetSource('sounds/send.wav'));
     } catch (e) {}
   }
 

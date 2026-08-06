@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/story.dart';
+import '../constants/default_characters.dart';
 import 'story_player_screen.dart';
 
 class StoryEditorScreen extends StatefulWidget {
@@ -74,19 +75,38 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> with SingleTicker
     final avatarCtrl = TextEditingController();
     int color = 0xFF60A5FA;
     await showDialog(context: context, builder: (_) => StatefulBuilder(builder: (ctx, setSt) => AlertDialog(
-      title: const Text('添加人物'), content: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: '人物名称')),
+      title: const Text('添加人物'), content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('快速添加蔚蓝档案风格角色:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+        const SizedBox(height: 8),
+        Wrap(spacing: 6, runSpacing: 6, children: DefaultCharacters.baCharacters.map((c) {
+          final alreadyAdded = _story.characters.any((x) => x.name == c.name);
+          return ActionChip(
+            avatar: CircleAvatar(backgroundColor: Color(c.colorValue), child: Text(c.name[0], style: const TextStyle(color: Colors.white, fontSize: 10))),
+            label: Text(c.name, style: const TextStyle(fontSize: 12)),
+            onPressed: alreadyAdded ? null : () {
+              setState(() => _story.characters.add(StoryCharacter(
+                id: context.read<AppState>().newId(),
+                name: c.name,
+                colorValue: c.colorValue,
+              )));
+              Navigator.pop(ctx);
+            },
+          );
+        }).toList()),
+        const Divider(height: 24),
+        TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: '自定义人物名称')),
+        const SizedBox(height: 8),
         TextField(controller: avatarCtrl, decoration: const InputDecoration(labelText: '头像URL(可选)')),
         const SizedBox(height: 8),
         Wrap(spacing: 8, children: [0xFF60A5FA, 0xFFEC4899, 0xFF10B981, 0xFFF59E0B, 0xFF8B5CF6, 0xFFEF4444].map((c) => GestureDetector(
           onTap: () => setSt(() => color = c), child: Container(width: 28, height: 28, decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle, border: color == c ? Border.all(width: 2) : null)),
         )).toList()),
-      ]), actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')), TextButton(onPressed: () {
+      ])), actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')), TextButton(onPressed: () {
         if (nameCtrl.text.isNotEmpty) {
           setState(() => _story.characters.add(StoryCharacter(id: context.read<AppState>().newId(), name: nameCtrl.text, avatarPath: avatarCtrl.text, colorValue: color)));
         }
         Navigator.pop(ctx);
-      }, child: const Text('添加'))],
+      }, child: const Text('添加自定义'))],
     )));
   }
 

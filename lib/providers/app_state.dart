@@ -8,6 +8,7 @@ import '../models/app_settings.dart';
 import '../services/storage_service.dart';
 import '../services/ai_service.dart';
 import '../services/notification_service.dart';
+import '../services/sound_service.dart';
 
 class AppState extends ChangeNotifier {
   final _uuid = const Uuid();
@@ -76,6 +77,13 @@ class AppState extends ChangeNotifier {
     );
     messages.putIfAbsent(chatId, () => []).add(msg);
     await StorageService.addMessage(msg);
+    if (settings.soundEnabled) {
+      if (isMe) {
+        SoundService.playSendSound();
+      } else {
+        SoundService.playMessageSound();
+      }
+    }
     notifyListeners();
     return msg;
   }

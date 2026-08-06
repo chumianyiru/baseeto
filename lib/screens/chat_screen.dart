@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import '../providers/app_state.dart';
 import '../models/contact.dart';
@@ -99,6 +100,24 @@ class _ChatScreenState extends State<ChatScreen> {
     if (amount == null) return;
     final app = context.read<AppState>();
     await app.sendMessage(chatId: widget.contact.id, content: '🧧 红包 ¥$amount', type: MessageType.redPacket, extraData: amount.toString(), isMe: true);
+    setState(() => _visibleCount = (app.messages[widget.contact.id]?.length ?? 0));
+    _scrollToBottom();
+  }
+
+  Future<void> _sendFile() async {
+    final result = await FilePicker.platform.pickFiles();
+    if (result == null || result.files.single.path == null) return;
+    final file = File(result.files.single.path!);
+    final fileName = result.files.single.name;
+    final fileSize = await file.length();
+    final app = context.read<AppState>();
+    await app.sendMessage(
+      chatId: widget.contact.id,
+      content: '📎 $fileName',
+      type: MessageType.file,
+      extraData: '${result.files.single.path}|$fileSize',
+      isMe: true,
+    );
     setState(() => _visibleCount = (app.messages[widget.contact.id]?.length ?? 0));
     _scrollToBottom();
   }
@@ -275,6 +294,20 @@ class _ChatScreenState extends State<ChatScreen> {
             Text('点击查看详情', style: TextStyle(color: Colors.white70, fontSize: 12)),
           ]),
         ]);
+      case MessageType.file:
+        final parts = msg.extraData?.split('|') ?? ['', '0'];
+        final path = parts[0];
+        final size = int.tryParse(parts.length > 1 ? parts[1] : '0') ?? 0;
+        final sizeStr = size < 1024 ? '$size B' : size < 1024 * 1024 ? '${(size / 1024).toStringAsFixed(1)} KB' : '${(size / 1024 / 1024).toStringAsFixed(1)} MB';
+        final fileName = path.split('/').last;
+        return Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.insert_drive_file, size: 36),
+          const SizedBox(width: 12),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(fileName, style: style.copyWith(fontWeight: FontWeight.w500)),
+            Text(sizeStr, style: style.copyWith(fontSize: 12, color: isMe ? Colors.white70 : Colors.grey[600])),
+          ]),
+        ]);
       default:
         return Text(msg.content, style: style);
     }
@@ -292,6 +325,7 @@ class _ChatScreenState extends State<ChatScreen> {
         IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: () {
           showModalBottomSheet(context: context, builder: (_) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
             ListTile(leading: const Icon(Icons.image), title: const Text('图片'), onTap: () { Navigator.pop(context); _sendImage(); }),
+            ListTile(leading: const Icon(Icons.attach_file), title: const Text('文件'), onTap: () { Navigator.pop(context); _sendFile(); }),
             ListTile(leading: const Icon(Icons.payments), title: const Text('转账'), onTap: () { Navigator.pop(context); _sendTransfer(); }),
             ListTile(leading: const Icon(Icons.card_giftcard), title: const Text('红包'), onTap: () { Navigator.pop(context); _sendRedPacket(); }),
           ])));
